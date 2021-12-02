@@ -47,7 +47,6 @@ def list_images(dataset, dataset_y, ylabel="", cmap=None):
     for i in range(6):
         plt.subplot(1, 6, i + 1)
         indx = random.randint(0, len(dataset) - 1)
-        # Use gray scale color map if there is only one channel
         cmap = 'gray' if len(dataset[indx].shape) == 2 else cmap
         plt.imshow(dataset[indx], cmap=cmap)
         font = {
@@ -56,7 +55,6 @@ def list_images(dataset, dataset_y, ylabel="", cmap=None):
             'size': 17,
         }
         plt.xlabel(signs[dataset_y[indx]], fontdict=font)
-        # plt.ylabel(ylabel)
         plt.xticks([])
         plt.yticks([])
     plt.tight_layout(pad=0, h_pad=0, w_pad=0)
@@ -80,11 +78,7 @@ def histogram_plot(dataset, label):
 
 
 def visualizeDataset():
-    # Plotting sample examples, before pre-processing
     list_images(X_train, y_train, "Training example")
-    # list_images(X_test, y_test, "Testing example")
-    # list_images(X_valid, y_valid, "Validation example")
-    # Show frequency of each label
     histogram_plot(y_train, "Training examples")
     histogram_plot(y_test, "Testing examples")
     histogram_plot(y_valid, "Validation examples")
@@ -120,23 +114,16 @@ def image_normalize(image):
     return image
 
 
-def preprocess(data):  # step 3
+def preprocess(data):
     data = (data * 2. / 255 - 1).reshape((len(data), settings.IMG_W, settings.IMG_H, settings.CHANNELS))  # pixel values in range [-1., 1.] for D
     return data
-    # Sample images after greyscaling
     gray_images = list(map(gray_scale, data))
-    # list_images(gray_images, y_train, "Gray Scale image", "gray")
-    # Equalize images using skimage to improve contrast
-    # Sample images after Local Histogram Equalization
     equalized_images = list(map(local_histo_equalize, gray_images))
-    # list_images(equalized_images, y_train, "Equalized Image", "gray")
 
-    # Normalize images
     n_training = data.shape
     normalized_images = np.zeros((n_training[0], n_training[1], n_training[2]))
     for i, img in enumerate(equalized_images):
         normalized_images[i] = image_normalize(img)
-    # list_images(normalized_images, y_train, "Normalized Image", "gray")
     normalized_images = normalized_images[..., None]
     return normalized_images
 
@@ -145,7 +132,6 @@ class KerasModel:
     def __init__(self, n_out=n_classes):
         self.n_out = n_out
         self.model = self.setup_model_keras()
-        # self.model.summary()
 
     def inceptionModel(self):
         model = keras.applications.InceptionV3(
@@ -184,7 +170,6 @@ class KerasModel:
         model.add(layers.MaxPooling2D(pool_size=(2, 2)))
 
         model.add(layers.Flatten())
-        # Fully connected layer
 
         model.add(layers.BatchNormalization())
         model.add(layers.Dense(512))
@@ -193,8 +178,6 @@ class KerasModel:
         model.add(layers.Dropout(0.2))
         model.add(layers.Dense(self.n_out))
 
-        # model.add(Convolution2D(10,3,3, border_mode='same'))
-        # model.add(GlobalAveragePooling2D())
         model.add(layers.Activation('softmax'))
 
         img = Input(shape=settings.IMG_SHAPE)
@@ -298,9 +281,8 @@ def showTestImagesWithLabels(test_data, test_labels, model, print_new_acc=False)
 
 def showTestImages(test_data, model):
     new_test_images_preprocessed = preprocess(np.asarray(test_data))
-    # get predictions
     y_prob, y_pred = model.y_predict_topk_prob_and_pred(new_test_images_preprocessed)
-    # generate summary of results
+
     plt.figure(figsize=(15, 16))
     new_test_images_len = len(new_test_images_preprocessed)
     for i in range(new_test_images_len):
@@ -317,64 +299,13 @@ def showTestImages(test_data, model):
 
 def main():
     global X_train, y_train
-
-    # Step 3, preprocessing
     if SHOW_DATASET:
         visualizeDataset()
-    # Randomize dataset to improve training, using sklearn
     X_train, y_train = shuffle(X_train, y_train)
-    # X_train_normalized = preprocess(X_train)
-    #  Step 4, training
     kerasModel = KerasModel(n_out=n_classes)
     kerasModel.load_model("models/TrafficSignRecognition-KerasModel.model")
-    # kerasModel = trainModelKeras(X_train_normalized)
 
-    # Step 5, testing
-    # X_test_preprocessed = preprocess(X_test)
-    # y_test_onehot = to_categorical(y_test, n_classes)
-
-    # y_pred = kerasModel.y_predict(X_test_preprocessed)
-    # print(sum(y_test == y_pred))
-    # test_accuracy = sum(sum(y_test == y_pred)) / len(y_test)
-    # print("Test Accuracy = {:.1f}%".format(test_accuracy * 100))
-
-    # Show model results, and failures
-    # cm = confusion_matrix(y_test, y_pred)
-    # cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    # cm = np.log(.0001 + cm)
-    # plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
-    # plt.title('Log of normalized Confusion Matrix')
-    # plt.ylabel('True label')
-    # plt.xlabel('Predicted label')
-    # plt.show()
     showTestImagesWithLabels(test_data=X_test[0:5], test_labels=y_train[0:5], model=kerasModel)
-    # Step 6, testing new images(outside dataset)
-    # new_test_images = []
-    # path = 'datasets/traffic-signs-data/new_test_images/'
-    # for image in os.listdir(path):
-    #     img = cv2.imread(path + image)
-    #     img = cv2.resize(img, (32, 32))
-    #     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    #     new_test_images.append(img)
-    # new_IDs = [13, 3, 14, 27, 17]
-    # print("Number of new testing examples: ", len(new_test_images))
-
-    # plt.figure(figsize=(15, 16))
-    # for i in range(len(new_test_images)):
-    #     plt.subplot(2, 5, i + 1)
-    #     plt.imshow(new_test_images[i])
-    #     plt.xlabel(signs[new_IDs[i]])
-    #     plt.ylabel("New testing image")
-    #     plt.xticks([])
-    #     plt.yticks([])
-    # plt.tight_layout(pad=0, h_pad=0, w_pad=0)
-    # plt.show()
-
-
-#
-# # New test data preprocessing
-# showTestImagesWithLabels(new_test_images, new_IDs, kerasModel)
-
 
 if __name__ == '__main__':
     main()
